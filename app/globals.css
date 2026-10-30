@@ -299,3 +299,4 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .pill{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border:1px solid var(--line);border-radius:var(--r);color:var(--muted);flex-shrink:0}
 .pill.live{color:var(--sun-2);border-color:var(--sun-2)}
 .post-acts{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px}
+.setup-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;line-height:1.5}

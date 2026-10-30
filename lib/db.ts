@@ -6,8 +6,16 @@ import { SCHEMA, dbConfig } from './schema.mjs';
 let client: Client | null = null;
 let ready: Promise<void> | null = null;
 
+// Vercel's filesystem is read-only and not kept between requests, so a local SQLite file can't work there.
+export const dbMissingOnVercel = () => Boolean(process.env.VERCEL) && dbConfig().url.startsWith('file:');
+
+export class DbNotConfigured extends Error {
+  constructor() { super('DATABASE_URL is not set. On Vercel, connect a Turso database (see README).'); }
+}
+
 function getClient() {
   if (!client) {
+    if (dbMissingOnVercel()) throw new DbNotConfigured();
     const cfg = dbConfig();
     if (cfg.url.startsWith('file:')) mkdirSync('data', { recursive: true });
     client = createClient(cfg);

@@ -30,6 +30,7 @@ export async function saveImage(file: File): Promise<{ url: string } | { error: 
     const blob = await put(`uploads/${name}`, buf, { access: 'public', contentType: TYPES[ext] });
     return { url: blob.url };
   }
+  if (process.env.VERCEL) return { error: 'Image storage isn\'t connected. Add Vercel Blob to this project in the Vercel dashboard, then redeploy.' };
   await mkdir(UPLOAD_DIR, { recursive: true });
   await writeFile(path.join(UPLOAD_DIR, name), buf);
   return { url: `/uploads/${name}` };

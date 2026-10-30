@@ -2,8 +2,13 @@ import 'server-only';
 import { query, run } from './db';
 import { normalizeContent, safeImage, type Content, type Post } from './site-data';
 
+// Public pages keep working (with the default copy) if the database is missing or down.
+async function orFallback<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+  try { return await fn(); } catch (e) { console.error('[db]', e instanceof Error ? e.message : e); return fallback; }
+}
+
 export async function getContent(): Promise<Content> {
-  const row = (await query<{ data: string }>('SELECT data FROM site_content WHERE id = 1'))[0];
+  const row = await orFallback(async () => (await query<{ data: string }>('SELECT data FROM site_content WHERE id = 1'))[0], undefined);
   if (!row) return normalizeContent(null);
   try { return normalizeContent(JSON.parse(row.data)); } catch { return normalizeContent(null); }
 }
@@ -25,14 +30,15 @@ const toPost = (r: PostRow): Post => ({
 });
 
 export async function listPosts({ includeDrafts = false, limit = 100 } = {}) {
-  const rows = await query<PostRow>(
-    `SELECT * FROM posts ${includeDrafts ? '' : 'WHERE published = 1'}
-     ORDER BY COALESCE(published_at, created_at) DESC, id DESC LIMIT ?`, [limit]);
+  const sql = `SELECT * FROM posts ${includeDrafts ? '' : 'WHERE published = 1'}
+     ORDER BY COALESCE(published_at, created_at) DESC, id DESC LIMIT ?`;
+  // The editor needs to see real errors; public pages just show no posts.
+  const rows = includeDrafts ? await query<PostRow>(sql, [limit]) : await orFallback(() => query<PostRow>(sql, [limit]), []);
   return rows.map(toPost);
 }
 
 export async function getPostBySlug(slug: string) {
-  const r = (await query<PostRow>('SELECT * FROM posts WHERE slug = ? AND published = 1', [slug]))[0];
+  const r = await orFallback(async () => (await query<PostRow>('SELECT * FROM posts WHERE slug = ? AND published = 1', [slug]))[0], undefined);
   return r ? toPost(r) : null;
 }
 
