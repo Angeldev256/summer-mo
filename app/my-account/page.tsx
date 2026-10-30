@@ -27,9 +27,26 @@ export default async function MyAccount() {
       </main>
     );
   }
-  const user = await getUser();
+  let user, setUp;
+  try {
+    user = await getUser();
+    setUp = user ? true : await hasAnyUser();
+  } catch (e) {
+    console.error('[my-account]', e);
+    return (
+      <main className="login-page">
+        <div className="login-box">
+          <a href="/" className="brand">SUMMER MO</a>
+          <h1>Can&apos;t reach the database</h1>
+          <p className="hint">
+            Check <code>DATABASE_URL</code> and <code>DATABASE_AUTH_TOKEN</code> in your hosting settings, then redeploy.
+            The public site keeps showing the default content until the database is back.
+          </p>
+        </div>
+      </main>
+    );
+  }
   if (!user) {
-    const setUp = await hasAnyUser();
     return (
       <main className="login-page">
         <div className="login-box">

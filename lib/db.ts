@@ -1,9 +1,9 @@
 import 'server-only';
 import { mkdirSync } from 'node:fs';
-import { createClient, type Client, type InValue } from '@libsql/client';
+import type { Client, InValue } from '@libsql/client';
 import { SCHEMA, dbConfig } from './schema.mjs';
 
-let client: Client | null = null;
+let client: Promise<Client> | null = null;
 let ready: Promise<void> | null = null;
 
 // Vercel's filesystem is read-only and not kept between requests, so a local SQLite file can't work there.
@@ -13,18 +13,23 @@ export class DbNotConfigured extends Error {
   constructor() { super('DATABASE_URL is not set. On Vercel, connect a Turso database (see README).'); }
 }
 
+// Remote databases (Turso) use the pure-HTTP client. The default client always loads SQLite's native
+// binary, which serverless bundles like Vercel's don't include, so it's only imported for local files.
+async function createClient(): Promise<Client> {
+  if (dbMissingOnVercel()) throw new DbNotConfigured();
+  const cfg = dbConfig();
+  if (!cfg.url.startsWith('file:')) return (await import('@libsql/client/web')).createClient(cfg);
+  mkdirSync('data', { recursive: true });
+  return (await import('@libsql/client')).createClient(cfg);
+}
+
 function getClient() {
-  if (!client) {
-    if (dbMissingOnVercel()) throw new DbNotConfigured();
-    const cfg = dbConfig();
-    if (cfg.url.startsWith('file:')) mkdirSync('data', { recursive: true });
-    client = createClient(cfg);
-  }
+  client ??= createClient().catch(e => { client = null; throw e; });
   return client;
 }
 
 async function init() {
-  const c = getClient();
+  const c = await getClient();
   await c.execute('PRAGMA foreign_keys = ON');
   for (const sql of SCHEMA) await c.execute(sql);
 }
