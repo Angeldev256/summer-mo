@@ -8,6 +8,8 @@ import { ContactForm } from '@/components/ContactForm';
 export const dynamic = 'force-dynamic';
 
 const GC_LIT = new Set([9, 10, 11, 12, 13, 17, 25, 33, 34, 35, 36, 41, 49, 50, 51, 52, 53, 46, 38, 30, 22]);
+const NUM = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+const chapters = (n: number) => `${NUM[n] ?? n} chapter${n === 1 ? '' : 's'}.`;
 const STATEMENT = "The mic matters most when it's handed to someone new.";
 
 export default async function Home() {
@@ -51,7 +53,7 @@ export default async function Home() {
         <section id="story">
           <div className="wrap">
             <div className="head rv">
-              <div><span className="eyebrow">My Story</span><h2>Five chapters.<br />One voice.</h2></div>
+              <div><span className="eyebrow">My Story</span><h2>{chapters(c.story.length)}<br />One voice.</h2></div>
               <p className="lede">Where it started, what changed, and where it&apos;s all heading.</p>
             </div>
             <div className="story">

@@ -42,13 +42,19 @@ export function SiteEffects() {
     const heats = q<HTMLElement>('.heat-art .word');
     const stops = q<HTMLElement>('#stops .stop');
 
-    let ticking = false;
+    let ticking = false, lastCur = -2;
     function frame() {
       ticking = false;
       const y = scrollY, h = document.documentElement.scrollHeight - innerHeight;
       const prog = $('progress'); if (prog) prog.style.transform = `scaleX(${h > 0 ? y / h : 0})`;
       let cur = -1; secs.forEach((s, k) => { if (s && s.getBoundingClientRect().top < innerHeight * 0.4) cur = k; });
       links.forEach((a, k) => a.classList.toggle('on', k === cur));
+      // On phones the nav row scrolls sideways: keep the current section's link in view.
+      if (cur !== lastCur) {
+        lastCur = cur;
+        const a = links[cur], row = a?.parentElement;
+        if (a && row && row.scrollWidth > row.clientWidth) row.scrollTo({ left: row.scrollLeft + a.getBoundingClientRect().left - row.getBoundingClientRect().left - (row.clientWidth - a.offsetWidth) / 2, behavior: reduce ? 'auto' : 'smooth' });
+      }
       let sc = 0; chs.forEach((c, k) => { if (c && c.getBoundingClientRect().top < innerHeight * 0.45) sc = k; });
       sLinks.forEach((a, k) => a.classList.toggle('on', k === sc));
       if (st) {

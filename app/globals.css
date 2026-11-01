@@ -18,7 +18,7 @@ html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}
   --sun-1:#f08a00; --sun-2:#e5482a; --sun-3:#c92a66; color-scheme:light }
 
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;scroll-padding-top:calc(64px + env(safe-area-inset-top,0px))}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--bg)}
 a{color:inherit;text-decoration:none}
@@ -47,7 +47,7 @@ nav .wrap{display:flex;align-items:center;gap:28px;height:52px}
 .hero .eyebrow{display:block;margin-bottom:28px}
 .hero h1{font-size:clamp(84px,19vw,248px);font-weight:900;letter-spacing:-.06em;line-height:.86}
 .hero h1 .line{display:block;overflow:hidden;padding-bottom:.04em}
-.hero h1 .line>span{display:inline-block}
+.hero h1 .line>span{display:inline-block;padding-inline:.04em .08em;margin-inline:-.04em -.08em}
 .hero-foot{display:grid;grid-template-columns:1.3fr 1fr;gap:40px;align-items:end;margin-top:56px}
 .cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}
 .btn{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:var(--r);font-size:15px;font-weight:500;border:1px solid var(--fg);transition:background .35s var(--ease),color .35s var(--ease),transform .35s var(--ease)}
@@ -60,15 +60,16 @@ nav .wrap{display:flex;align-items:center;gap:28px;height:52px}
 
 .roles{margin-top:72px;display:flex;align-items:baseline;gap:14px;font-family:var(--display);font-size:clamp(26px,4vw,44px);font-weight:700;letter-spacing:-.03em;flex-wrap:wrap}
 .roles .static{color:var(--muted);font-weight:500}
-.rot{position:relative;display:inline-block;height:1.1em;overflow:hidden;vertical-align:bottom;min-width:7ch}
-.rot span{position:absolute;left:0;top:0;white-space:nowrap;transform:translateY(110%);transition:transform .8s var(--ease)}
+/* every phrase shares one grid cell, so the box is as wide as the longest phrase and nothing gets cut off */
+.rot{display:inline-grid;height:1.15em;overflow:hidden;vertical-align:bottom;max-width:100%}
+.rot span{grid-area:1/1;white-space:nowrap;transform:translateY(110%);transition:transform .8s var(--ease)}
 .rot span.on{transform:translateY(0)}
 .rot span.out{transform:translateY(-110%)}
 
 /* marquee */
 .marquee{border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;padding-block:22px;background:var(--bg-2)}
-.track{display:flex;gap:48px;width:max-content;animation:slide 38s linear infinite;font-family:var(--display);font-size:clamp(22px,3vw,34px);font-weight:600;letter-spacing:-.02em}
-.track span{color:var(--muted);display:flex;gap:48px;align-items:center}
+.track{display:flex;width:max-content;animation:slide 38s linear infinite;font-family:var(--display);font-size:clamp(22px,3vw,34px);font-weight:600;letter-spacing:-.02em}
+.track span{color:var(--muted);display:flex;gap:48px;align-items:center;padding-right:48px}
 .track span::after{content:"";width:8px;height:8px;background:var(--sun-2)}
 @keyframes slide{to{transform:translateX(-50%)}}
 

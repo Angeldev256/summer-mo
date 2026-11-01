@@ -4,7 +4,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export const UPLOAD_DIR = path.join(process.cwd(), 'data', 'uploads');
-export const MAX_BYTES = 10 * 1024 * 1024;
+// Vercel rejects request bodies over 4.5 MB, so cap uploads there. The editor shrinks big photos first.
+export const MAX_BYTES = (process.env.VERCEL ? 4.4 : 10) * 1024 * 1024;
 
 const TYPES: Record<string, string> = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
 export const contentType = (name: string) => TYPES[name.split('.').pop()!.toLowerCase()];
@@ -19,7 +20,7 @@ function sniff(b: Buffer): keyof typeof TYPES | null {
 }
 
 export async function saveImage(file: File): Promise<{ url: string } | { error: string }> {
-  if (file.size > MAX_BYTES) return { error: 'That image is over 10 MB. Choose a smaller file.' };
+  if (file.size > MAX_BYTES) return { error: `That image is over ${process.env.VERCEL ? '4' : '10'} MB. Choose a smaller file.` };
   const buf = Buffer.from(await file.arrayBuffer());
   const ext = sniff(buf);
   if (!ext) return { error: 'Use a JPG, PNG, WebP or GIF image.' };

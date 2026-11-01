@@ -2,6 +2,7 @@ import 'server-only';
 import { mkdirSync } from 'node:fs';
 import type { Client, InValue } from '@libsql/client';
 import { SCHEMA, dbConfig } from './schema.mjs';
+import { hashPassword } from './password.mjs';
 
 let client: Promise<Client> | null = null;
 let ready: Promise<void> | null = null;
@@ -10,7 +11,7 @@ let ready: Promise<void> | null = null;
 export const dbMissingOnVercel = () => Boolean(process.env.VERCEL) && dbConfig().url.startsWith('file:');
 
 export class DbNotConfigured extends Error {
-  constructor() { super('DATABASE_URL is not set. On Vercel, connect a Turso database (see README).'); }
+  constructor() { super('No database is connected. On Vercel, add a Turso database (see README).'); }
 }
 
 // Remote databases (Turso) use the pure-HTTP client. The default client always loads SQLite's native
@@ -32,6 +33,20 @@ async function init() {
   const c = await getClient();
   await c.execute('PRAGMA foreign_keys = ON');
   for (const sql of SCHEMA) await c.execute(sql);
+  await bootstrapAdmin(c);
+}
+
+// On hosts where you can't run `npm run setup` (like Vercel), set ADMIN_PASSWORD (and optionally
+// ADMIN_USERNAME) in the project settings. The account is created once, only while no account exists.
+async function bootstrapAdmin(c: Client) {
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) return;
+  const username = (process.env.ADMIN_USERNAME || 'admin').trim();
+  if (password.length < 10) { console.error('[setup] ADMIN_PASSWORD must be at least 10 characters. No account created.'); return; }
+  const any = await c.execute('SELECT 1 FROM users LIMIT 1');
+  if (any.rows.length) return;
+  await c.execute({ sql: 'INSERT OR IGNORE INTO users (username, password_hash) VALUES (?, ?)', args: [username, await hashPassword(password)] });
+  console.log(`[setup] Created the "${username}" account from ADMIN_PASSWORD.`);
 }
 
 export async function db() {

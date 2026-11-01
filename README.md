@@ -55,12 +55,30 @@ Back up the `data/` folder. It is git-ignored, so it never goes to GitHub.
 
 The site needs a Node.js server (GitHub Pages can't run it).
 
-- **A server with a permanent disk** (VPS, Railway or Render with a volume, Fly.io): works as is.
-  Keep `data/` on the persistent disk.
-- **Vercel**: its servers don't keep files, so use hosted storage instead:
-  1. Create a Turso database and set `DATABASE_URL=libsql://…` and `DATABASE_AUTH_TOKEN=…`
-  2. Add Vercel Blob to the project, which sets `BLOB_READ_WRITE_TOKEN` (images then go to Blob)
-  3. Run `npm run setup` locally with those same variables in `.env.local` to create the admin account
+### Deploy on Vercel
+
+1. Go to **vercel.com/new**, import the GitHub repo **summer-mo**, and click **Deploy**.
+   No settings are needed for this step. The public site goes live right away with the default text.
+2. To turn on the editor at `/my-account`, open the project in Vercel:
+   - **Storage → Create Database → Turso**, and connect it to the project.
+     (Or create a database at turso.tech yourself and set `DATABASE_URL` and `DATABASE_AUTH_TOKEN`.)
+   - **Storage → Create → Blob**, and connect it to the project. Uploaded photos are stored there.
+   - **Settings → Environment Variables**: add `ADMIN_PASSWORD` (at least 10 characters).
+     Optionally add `ADMIN_USERNAME`; it defaults to `admin`.
+3. **Deployments → ⋯ → Redeploy**, so the new settings take effect.
+4. Open `https://<your-project>.vercel.app/my-account` and sign in.
+
+`ADMIN_PASSWORD` only creates the first account. Change the password later in the editor's
+**Account** tab. You can then delete the variable from Vercel.
+
+Large photos are resized in the browser before upload (Vercel accepts uploads up to 4.5 MB).
+
+Forgot the password on Vercel? On your computer, run `vercel env pull .env.local`, then `npm run reset-password`.
+
+### Other hosts
+
+On a server with a permanent disk (VPS, Railway or Render with a volume, Fly.io), it works as is.
+Run `npm run setup` once, and keep `data/` on the persistent disk.
 
 See `.env.example` for all settings.
 

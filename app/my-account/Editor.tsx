@@ -8,17 +8,43 @@ type Tab = keyof Content | 'blog' | 'account';
 const clone = <T,>(o: T): T => JSON.parse(JSON.stringify(o));
 
 // ---------- Small building blocks ----------
+const MAX_UPLOAD = 4 * 1024 * 1024; // stays under Vercel's 4.5 MB request limit
+const MAX_SIDE = 2400;
+
+// Big photos straight off a phone are often 5-15 MB. Resize them in the browser so uploads are quick
+// and fit the host's limit. GIFs are left alone so animations keep working.
+async function shrink(file: File): Promise<File> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || !('createImageBitmap' in window)) return file;
+  let bmp: ImageBitmap;
+  try { bmp = await createImageBitmap(file); } catch { return file; }
+  const scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+  if (scale === 1 && file.size <= 1.5 * 1024 * 1024) { bmp.close(); return file; }
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bmp.width * scale); canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height); bmp.close();
+  // PNGs may have transparency, so keep them as WebP; everything else becomes JPEG.
+  const type = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp';
+  for (const q of [0.86, 0.75, 0.62]) {
+    const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, type, q));
+    if (blob && blob.size <= MAX_UPLOAD) return new File([blob], file.name.replace(/\.\w+$/, '') + (type === 'image/jpeg' ? '.jpg' : '.webp'), { type });
+  }
+  return file;
+}
+
 function ImageField({ label, value, onChange, onStatus }: { label: string; value: string | null; onChange: (v: string | null) => void; onStatus: (s: string) => void }) {
   const [busy, setBusy] = useState(false);
-  async function upload(file: File) {
-    if (file.size > 10 * 1024 * 1024) { onStatus('That image is over 10 MB. Choose a smaller file.'); return; }
-    setBusy(true); onStatus(`Uploading ${file.name}…`);
+  async function upload(original: File) {
+    setBusy(true); onStatus(`Preparing ${original.name}…`);
     try {
+      const file = await shrink(original);
+      if (file.size > MAX_UPLOAD) throw new Error('That image is over 4 MB even after resizing. Choose a smaller file.');
+      onStatus(`Uploading ${original.name}…`);
       const fd = new FormData(); fd.append('file', file);
       const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed.');
-      onChange(data.url); onStatus(`Uploaded ${file.name}. Remember to save.`);
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 413) throw new Error('That image is too large for the server. Choose a smaller file.');
+      if (!res.ok || !data.url) throw new Error(data.error || `Upload failed (error ${res.status}). Try again.`);
+      onChange(data.url); onStatus(`Uploaded ${original.name}. Remember to save.`);
     } catch (e) { onStatus(e instanceof Error ? e.message : 'Upload failed.'); }
     finally { setBusy(false); }
   }
@@ -81,7 +107,10 @@ function PostEditor({ post, onSaved, onDeleted, onClose, onStatus }: {
         <button type="button" className="abtn sm" onClick={onClose}>← All posts</button>
         <div className="acts">
           {post?.published && <a className="abtn sm" href={`/blog/${post.slug}`} target="_blank" rel="noreferrer">View</a>}
-          {post && <DeleteButton onConfirm={async () => { await deletePostAction(post.id); onDeleted(post.id); onStatus('Post deleted.'); }} />}
+          {post && <DeleteButton onConfirm={async () => {
+            try { await deletePostAction(post.id); onDeleted(post.id); onStatus('Post deleted.'); }
+            catch { onStatus('Couldn\'t delete the post. Check you are still signed in and try again.'); }
+          }} />}
         </div>
       </div>
       <label className="af"><span>Title</span><input type="text" value={d.title} onChange={e => set('title', e.target.value)} placeholder="What happened?" /></label>
@@ -150,7 +179,7 @@ function AccountTab({ username, onStatus }: { username: string; onStatus: (s: st
       <label className="af"><span>Repeat new password</span><input type="password" value={pw2} onChange={e => setPw2(e.target.value)} autoComplete="new-password" /></label>
       <label className="af"><span>Current password (required)</span><input type="password" value={current} onChange={e => setCurrent(e.target.value)} autoComplete="current-password" required /></label>
       <div><button className="abtn primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save account'}</button></div>
-      <p className="hint">Forgot the password? On the server, run <code>npm run reset-password</code> to generate a new one.</p>
+      <p className="hint">Forgot the password? In the project folder, run <code>npm run reset-password</code> (on Vercel, run <code>vercel env pull .env.local</code> first so it uses the live database).</p>
     </form>
   );
 }
